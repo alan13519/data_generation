@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import math
 import datetime
 import seaborn as sns
+import scipy.signal
 from itertools import repeat 
 
 
@@ -72,7 +73,7 @@ class CohortGenerator:
             self.anomaly_list.append((anomaly_start, anomaly_end))
 
         self.cohorts, self.data = self.__generate_cohorts()
-        self.data['Day'] = self.daily_data
+
 
     def __generate_cohorts(self, generation_map=None):
         """
@@ -103,7 +104,7 @@ class CohortGenerator:
             # Assigns random cohort values and probability
             for sample in samples:
                 cohort.values[keys[sample]] = np.random.choice(self.cohort_dict[keys[sample]])
-                cohort.prob = np.random.normal(0.5, 0.15, 1)[0]
+                cohort.prob = np.random.normal(1.5, 0.35, 1)[0]
 
             # Append to cohort list, Not sure if this works
             cohorts.append(cohort)
@@ -123,10 +124,18 @@ class CohortGenerator:
 
         # Gets Age based on
         data['Age'] = data['Generation'].apply(mapper, x_map=generation_map)
+        data['Day'] = self.daily_data
 
         values = np.random.normal(self.mean_val * 2, (math.sqrt(math.sqrt(self.daily_obs))) * self.mean_val,
                                   self.n_data)
-        data['Values'] = values + (self.daily_data * (self.mean_val / 100))
+
+        # Add sin monthly seasonality               
+        monthly_seasonality = np.sin(data.Day.apply(lambda x : int(x/(365/12))))
+
+        # Add noise to sin
+        monthly_seasonality = monthly_seasonality.apply(lambda x: x + np.random.normal(0, 0.1))
+
+        data['Values'] =  monthly_seasonality * values + (self.daily_data * (self.mean_val / 100))
 
         # Add anomalies to data
         def add_anomalies(row):
@@ -154,7 +163,7 @@ class CohortGenerator:
         ts = pd.Timestamp(year=2018, month=1, day=1)
         df = self.data.copy()
         df['start'] = ts
-        df['Date'] = df.apply(lambda row: row.starterts + pd.Timedelta(days=row.Day-1), axis = 1)
+        df['Date'] = df.apply(lambda row: row.start + pd.Timedelta(days=row.Day-1), axis = 1)
         df.drop('start', axis=1, inplace=True)
         df.to_csv(str(filename) + '_data.csv', index=False, header=False)
 
@@ -168,6 +177,7 @@ class CohortGenerator:
 
 
 if __name__ == '__main__':
-    anomalies = [(1,3), (12, 6)]  # list of start months and how many months the anomaly spans
+    anomalies = [(1,4), (12, 4), (26,4)]  # list of start months and how many months the anomaly spans
     cg = CohortGenerator(anomalous_months=anomalies)  # Create generator
+    cg.output_file()
     cg.plot_data()
