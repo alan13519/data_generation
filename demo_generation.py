@@ -104,7 +104,7 @@ class CohortGenerator:
             # Assigns random cohort values and probability
             for sample in samples:
                 cohort.values[keys[sample]] = np.random.choice(self.cohort_dict[keys[sample]])
-                cohort.prob = np.random.normal(1.5, 0.35, 1)[0]
+                cohort.prob = np.random.normal(2, 0.25, 1)[0]
 
             # Append to cohort list, Not sure if this works
             cohorts.append(cohort)
@@ -165,16 +165,16 @@ class CohortGenerator:
         df['start'] = ts
         df['Date'] = df.apply(lambda row: row.start + pd.Timedelta(days=row.Day-1), axis = 1)
         df.drop('start', axis=1, inplace=True)
-        df.to_csv(str(filename) + '_data.csv', index=False, header=False)
+        df.to_csv(str(filename) + f'{str(id(df))[-4:]}_data.csv', index=False)
 
-    def plot_data(self):
+    def plot_data(self, path='pics'):
         df = self.data.copy()
         faux = df.groupby('Day').sum()
         y = range(1, len(set(self.daily_data)) + 1)
         plt.plot(y, faux[
             'Values'])
+        plt.savefig(path+f'/fig{id(df)}.png')
         plt.show()
-
 
 if __name__ == '__main__':
     anomalies = [(1,4), (12, 4), (26,4)]  # list of start months and how many months the anomaly spans
